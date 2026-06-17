@@ -1,0 +1,32 @@
+name: CI/CD Pipeline for Doctor Management System
+
+# Yeh pipeline kab chalegi? Jab bhi main branch par 'push' hoga
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest # GitHub hume ek free ubuntu server dega ye kaam karne ke liye
+
+    steps:
+    # 1. GitHub par tera code download karega robot
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 2. Docker Hub par login karega tere secrets use karke
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    # 3. Nayi Docker Image build karega aur Docker Hub par push kar dega
+    - name: Build and Push Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/doctor_mgmt_web:latest # Hamesha latest image update hogi
