@@ -1,0 +1,220 @@
+{% extends "doctor/main.html" %}
+{% load static %}
+{% load hashid_tags %}
+{% block title %}Purchase Details - Medicine Store{% endblock %}
+{% block content %}
+
+<main class="main-content" id="mainContent">
+
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <h2 class="page-title mb-0">Purchase Order #{{ purchase.id }}</h2>
+                {% if purchase.status == "received" %}
+                <span class="badge bg-success">Received</span>
+                {% else %}
+                <span class="badge bg-warning text-dark">Pending</span>
+                {% endif %}
+            </div>
+            <p class="text-muted small mb-0">View purchase details and items</p>
+        </div>
+            <div class="d-flex align-items-center gap-2">
+
+            {% if purchase.status == "received" %}
+
+            <button type="button" class="btn btn-secondary btn-sm" disabled>
+                <i class="bi bi-check-circle me-2"></i>
+                Already Received
+            </button>
+
+            {% else %}
+
+            <a href="{% url 'medicine:receive_purchase' purchase.id|hid %}" class="btn btn-success btn-sm">
+                <i class="bi bi-box-arrow-in-down me-2"></i>
+                Receive Purchase
+            </a>
+
+            {% endif %}
+
+            <a href="{% url 'medicine:purchase_list' %}" class="patient-link-btn btn-sm">
+                <i class="bi bi-arrow-left me-2"></i>
+                Purchase List
+            </a>
+
+        </div>
+    </div>
+
+    <!-- Vendor & Date Info Card -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 p-4">
+                <h6 class="text-muted small fw-semibold mb-3">
+                    <i class="bi bi-building me-2" style="color: #0066cc;"></i>Vendor Details
+                </h6>
+                <div style="border-left: 3px solid #0066cc; padding-left: 15px;">
+                    <div class="mb-3">
+                        <div class="text-muted small">Vendor Name</div>
+                        <div class="fw-semibold" style="font-size: 1.1rem;">{{ purchase.vendor.name }}</div>
+                    </div>
+                    {% if purchase.vendor.phone %}
+                    <div class="mb-3">
+                        <div class="text-muted small">Phone</div>
+                        <a href="tel:{{ purchase.vendor.phone }}" class="text-decoration-none">
+                            <i class="bi bi-telephone me-1" style="color: #28a745;"></i>{{ purchase.vendor.phone }}
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% if purchase.vendor.email %}
+                    <div class="mb-3">
+                        <div class="text-muted small">Email</div>
+                        <a href="mailto:{{ purchase.vendor.email }}" class="text-decoration-none">
+                            <i class="bi bi-envelope me-1" style="color: #fd7e14;"></i>{{ purchase.vendor.email }}
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 p-4">
+                <h6 class="text-muted small fw-semibold mb-3">
+                    <i class="bi bi-calendar-event me-2" style="color: #fd7e14;"></i>Order Summary
+                </h6>
+                <div style="border-left: 3px solid #fd7e14; padding-left: 15px;">
+                    <div class="mb-3">
+                        <div class="text-muted small">Order Date</div>
+                        <div class="fw-semibold" style="font-size: 1.1rem;">{{ purchase.date|date:"d M, Y" }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-muted small">Total Items</div>
+                        <div class="fw-semibold" style="font-size: 1.1rem;">{{ purchase.items.count }}</div>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Total Amount</div>
+                        <div class="fw-bold" style="font-size: 1.5rem; color: #28a745;">₹{{ purchase.total_amount|floatformat:2 }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Purchase Items Table -->
+    <div class="table-section">
+        <h5 class="mb-3 fw-semibold">
+            <i class="bi bi-box-seam me-2" style="color: #0066cc;"></i>Purchase Items
+        </h5>
+        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; display: block;">
+            <table class="table table-custom" style="min-width: 1200px; width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Medicine</th>
+                        <th>Power</th>
+                        <th>Qty Strips</th>
+                        <th>Unit/Strip</th>
+                        <th>Total Units</th>
+                        <th>Strip Price</th>
+                        <th>Tax %</th>
+                        <th>Discount</th>
+                        <th>Final Amount</th>
+                        <th>Effective Unit Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in purchase.items.all %}
+                    <tr>
+                        <td class="patient-name fw-semibold">
+                            {{ item.medicine_variant.medicine.name }}
+                        </td>
+
+                        <td class="patient-info">
+                            <span class="badge bg-secondary">{{ item.medicine_variant.power }}</span>
+                        </td>
+
+                        <td class="patient-info text-center fw-semibold">
+                            {{ item.quantity_strips }}
+                        </td>
+
+                        <td class="patient-info text-center fw-semibold">
+                            {{ item.unit_per_strip }}
+                        </td>
+
+                        <td class="patient-info text-center fw-semibold total-units-cell"
+                            data-total-units="{{ item.total_units }}">
+                            {{ item.total_units }}
+                        </td>
+
+                        <td class="patient-info text-end fw-semibold">
+                            ₹{{ item.strip_price|floatformat:2 }}
+                        </td>
+
+                        <td class="patient-info text-center fw-semibold">
+                            {{ item.tax_percent|floatformat:2 }}%
+                        </td>
+
+                        <td class="patient-info text-end fw-semibold">
+                            ₹{{ item.discount_amount|floatformat:2 }}
+                        </td>
+
+                        <td class="patient-info text-end fw-semibold">
+                            ₹{{ item.final_amount|floatformat:2 }}
+                        </td>
+
+                        <td class="patient-info text-end fw-semibold">
+                            ₹{{ item.effective_unit_cost|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center py-4 text-muted">
+                            No items in this purchase order
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Summary Card -->
+    <div style="background:#f8fbff; border:2px solid #0066cc; border-radius:10px; padding:20px; margin-top:20px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:20px;">
+            <div>
+                <div style="font-size:0.85rem; color:#666; font-weight:500; margin-bottom:8px;">
+                    Total Purchase Amount
+                </div>
+                <div style="font-size:1.8rem; color:#28a745; font-weight:700;">
+                    ₹{{ purchase.total_amount|floatformat:2 }}
+                </div>
+            </div>
+            <div>
+                <div style="font-size:0.85rem; color:#666; font-weight:500; margin-bottom:8px;">
+                    Total Ordered Units
+                </div>
+                <div id="totalOrderedUnits" style="font-size:1.8rem; color:#0066cc; font-weight:700;">
+                    0
+                </div>
+            </div>
+            <div>
+                <div style="font-size:0.85rem; color:#666; font-weight:500; margin-bottom:8px;">
+                    Purchase Status
+                </div>
+                <div style="font-size:1.8rem; color:#1f2937; font-weight:700;">
+                    {{ purchase.get_status_display|default:purchase.status|default:"Draft" }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<script>
+    const totalOrderedUnits = Array.from(document.querySelectorAll('.total-units-cell'))
+        .reduce((sum, cell) => sum + (parseInt(cell.dataset.totalUnits, 10) || 0), 0);
+
+    const totalOrderedUnitsEl = document.getElementById('totalOrderedUnits');
+    if (totalOrderedUnitsEl) totalOrderedUnitsEl.textContent = totalOrderedUnits;
+</script>
+
+{% endblock %}

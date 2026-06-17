@@ -1,0 +1,19 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Databases & local files
+*.sqlite3
+.env
+db_data/
+*.log
+
+# Docker logs
+.docker/

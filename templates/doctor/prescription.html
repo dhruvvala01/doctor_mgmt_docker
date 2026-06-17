@@ -1,0 +1,461 @@
+{% extends "doctor/main.html" %}
+{% load hashid_tags %}
+{% block title %}Patient Visit & Prescription - Doctor Dashboard{% endblock %}
+{% block content %}
+{% load static  %}
+<main class="main-content" id="mainContent">
+    <div class="container-fluid px-4 py-5">
+
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h1 class="h3 text-dark fw-bold mb-1">Patient Visit</h1>
+                <p class="text-muted small mb-0">Document visit details and create prescription</p>
+            </div>
+            <div class="d-flex gap-2">
+                {% if visit_completed %}
+                <a href="{% url 'appointment:print_prescription' visit.id|hid %}" target="_blank"
+                    class="btn btn-outline-secondary rounded-2">
+                    <i class="bi bi-printer me-2"></i>Print
+                </a>
+                {% endif %}
+                {% if is_today %}
+                <a href="{% url 'doctor:dashboard' %}" class="btn btn-outline-primary rounded-2">
+                    <i class="bi me-2"></i>Back to Appointments
+                </a>
+                {% else %}
+                <a href="{% url 'appointment:manage_appointments' %}" class="btn btn-outline-primary rounded-2">
+                    <i class="bi bi me-2"></i>View History
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Main Form -->
+        <form method="post" id="visitForm" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="row g-4 align-items-start mb-4">
+                <!-- Left Column -->
+                <div class="col-lg-8">
+                    <!-- Patient Info -->
+                    <div class="card border-0 shadow-sm rounded-3 mb-4">
+                        <div class="card-header bg-light border-0 px-4 py-3">
+                            <h5 class="card-title mb-0 fw-semibold text-dark">Patient Information</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-dark mb-2">Patient Name</label>
+                                    <input type="text" class="form-control bg-secondary-subtle"
+                                        style="text-align: left !important;"
+                                        value="{% if visit.appointment.family_member %}{{ visit.appointment.family_member.name }}{% else %}{{ visit.appointment.patient.user.get_full_name }}{% endif %}"
+                                        readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-dark mb-2">Appointment Date</label>
+                                    <input type="text" class="form-control form-control-lg bg-secondary-subtle"
+                                        value="{% if visit %}{{ visit.appointment.appointment_date }}{% endif %}"
+                                        readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visit Details -->
+                    <div class="card border-0 shadow-sm rounded-3">
+                        <div class="card-header bg-light border-0 px-4 py-3">
+                            <h5 class="card-title mb-0 fw-semibold text-dark">Visit Details</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="mb-4">
+                                <label for="symptoms" class="form-label fw-semibold text-dark mb-2">
+                                    Symptoms <span class="text-danger">*</span>
+                                </label>
+                                <textarea class="form-control" id="symptoms" name="symptoms" rows="3"
+                                    placeholder="Describe patient's symptoms..."
+                                    required>{{ visit.symptoms }}</textarea>
+                            </div>
+                            <div class="mb-4">
+                                <label for="diagnosis" class="form-label fw-semibold text-dark mb-2">
+                                    Diagnosis <span class="text-danger">*</span>
+                                </label>
+                                <textarea class="form-control" id="diagnosis" name="diagnosis" rows="3"
+                                    placeholder="Document the medical diagnosis..."
+                                    required>{{ visit.diagnosis }}</textarea>
+                            </div>
+                            <div class="mb-0">
+                                <label for="notes" class="form-label fw-semibold text-dark mb-2">
+                                    Additional Notes <span class="text-muted">(Optional)</span>
+                                </label>
+                                <textarea class="form-control" id="notes" name="notes" rows="2"
+                                    placeholder="Any additional observations...">{{ visit.notes }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm rounded-3">
+                        <div class="card-header bg-light border-0 px-4 py-3">
+                            <h5 class="card-title mb-0 fw-semibold text-dark">Quick Actions</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="d-grid">
+                                {% if visit_completed %}
+                                <button type="submit" name="update_prescription" value="1"
+                                    class="btn btn-primary btn-lg rounded-3 mb-3" id="completeBtn">
+                                    <i class="bi bi-pencil-square me-2"></i>Update Prescription
+                                </button>
+                                <div class="alert alert-success py-2 text-center small mb-0">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Visit Completed
+                                </div>
+                                {% else %}
+                                <button type="submit" name="complete_visit" value="1"
+                                    class="btn btn-success btn-lg rounded-3 mb-3" id="completeBtn">
+                                    <i class="bi bi-check-circle me-2"></i>Complete Visit
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div class="p-3 bg-light rounded-3">
+                                <h6 class="fw-semibold text-dark mb-3">Visit Summary</h6>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted small">Medicines:</span>
+                                    <span class="badge bg-primary rounded-pill" id="medicineCount">0</span>
+                                </div>
+
+                            </div>
+
+                            <!-- Toggle Legend -->
+                            <div class="mt-3 p-3 border rounded-3 bg-white">
+                                <p class="text-muted small mb-2 fw-semibold">Stock Deduct Toggle:</p>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="toggle-demo on"></span>
+                                    <span class="small text-success">ON — Stock Deducted</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="toggle-demo off"></span>
+                                    <span class="small text-muted">OFF — Stock Skipped</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 shadow-sm rounded-3 mt-4">
+                        <div class="card-header bg-light border-0 px-4 py-3">
+                            <h5 class="card-title mb-0 fw-semibold text-dark">
+                                <i class="bi bi-file-earmark-medical me-2 text-primary"></i>Lab Documents
+                            </h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <label for="labDocuments" class="form-label fw-semibold text-dark mb-2">
+                                Upload Lab Files
+                            </label>
+                            <input type="file" class="form-control" id="labDocuments" name="lab_documents" multiple
+                                accept=".pdf,image/*,.doc,.docx">
+                            <div class="form-text mb-3">Upload reports as image, PDF, or document files.</div>
+
+                            <div id="selectedLabDocuments" class="lab-document-list" style="display:none;"></div>
+
+                            {% if lab_documents %}
+                            <div class="lab-document-list">
+                                {% for document in lab_documents %}
+                                <div class="lab-document-item">
+                                    <div class="lab-document-content">
+                                        <div class="lab-document-icon">
+                                            <i class="bi bi-file-earmark-text"></i>
+                                        </div>
+                                        <div class="lab-document-meta">
+                                             <div class="lab-document-title">{{ document.original_name }}</div>
+                                            <small class="text-muted">Uploaded {{ document.uploaded_at|date:"d M Y, h:i A" }}</small>
+                                        </div>
+                                    </div>
+                                    <div class="lab-document-actions">
+                                        <a href="{{ document.file.url }}" target="_blank"
+                                            class="btn btn-outline-primary btn-sm rounded-3">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="text-muted small border rounded-3 p-3 bg-light">
+                                No lab documents uploaded yet.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prescription Table -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm rounded-3">
+                        <div
+                            class="card-header bg-white border-0 px-4 py-3 d-flex justify-content-between align-items-center border-bottom">
+                            <h5 class="card-title mb-0 fw-semibold text-dark">Prescription List</h5>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" id="bulkDeletePrescriptionBtn" class="btn btn-danger d-none rounded-pill px-3" onclick="bulkRemoveMedicineRows()">
+                                    <i class="bi bi-trash"></i> Delete Selected
+                                </button>
+                                <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal"
+                                    data-bs-target="#medicineModal">
+                                    <i class="bi bi-plus-lg me-2"></i>Add Medicine
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th style="width: 40px; text-align: center; border-bottom: 0;">
+                                                <input type="checkbox" class="form-check-input" id="selectAllPrescriptions" onchange="toggleAllPrescriptions(this)">
+                                            </th>
+                                            <th class="px-4 py-3 border-0">Medicine & Strength</th>
+                                            <th class="text-center border-0">Morn.</th>
+                                            <th class="text-center border-0">Aft.</th>
+                                            <th class="text-center border-0">Eve.</th>
+                                            <th class="text-center border-0">Night</th>
+                                            <th class="border-0">Timing</th>
+                                            <th class="text-center border-0">Duration</th>
+                                            <th class="text-center border-0">
+                                                Stock Deduct
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                                                    title="ON = Stock is deducted after complete visit. OFF = Stock Skipped."></i>
+                                            </th>
+                                            <th class="text-center border-0">Stock Status</th>
+                                            <th class="text-center border-0">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="medicineList">
+            </style>                                {% for item in items %}
+                                        <tr>
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input prescription-checkbox" onchange="updatePrescriptionBulkDeleteBtn()">
+                                            </td>
+                                            <td class="px-4">
+                                                <div class="fw-bold text-dark">{{ item.medicine_variant.medicine.name }}
+                                                </div>
+                                                <div class="small text-muted">{{ item.medicine_variant.power }}</div>
+                                                {% if item.notes %}
+                                                <div class="small text-muted mt-1">
+                                                    <i class="bi bi-journal-text me-1"></i>{{ item.notes }}
+                                                </div>
+                                                {% endif %}
+                                                <input type="hidden" name="variant_id[]"
+                                                    value="{{ item.medicine_variant.id }}">
+                                                <input type="hidden" name="item_id[]" value="{{ item.id }}">
+                                                <input type="hidden" name="medicine_notes"
+                                                    value="{{ item.notes|default:'' }}">
+                                            </td>
+                                            <td class="text-center">
+                                                {{ item.parsed_morning }}
+                                                <input type="hidden" name="morning" value="{{ item.parsed_morning }}">
+                                            </td>
+                                            <td class="text-center">
+                                                {{ item.parsed_afternoon }}
+                                                <input type="hidden" name="afternoon"
+                                                    value="{{ item.parsed_afternoon }}">
+                                            </td>
+                                            <td class="text-center">
+                                                {{ item.parsed_evening }}
+                                                <input type="hidden" name="evening" value="{{ item.parsed_evening }}">
+                                            </td>
+                                            <td class="text-center">
+                                                {{ item.parsed_night }}
+                                                <input type="hidden" name="night" value="{{ item.parsed_night }}">
+                                            </td>
+                                            <td>
+                                                <span
+                                                    class="badge {% if item.parsed_meal == 'after_food' %}bg-info-subtle text-info{% else %}bg-warning-subtle text-warning{% endif %}">
+                                                    {% if item.parsed_meal == 'after_food' %}After Food{% else %}Before
+                                                    Food{% endif %}
+                                                </span>
+                                                <input type="hidden" name="meal" value="{{ item.parsed_meal }}">
+                                            </td>
+                                            <td class="text-center">
+                                                {{ item.days }} Days
+                                                <input type="hidden" name="days" value="{{ item.days }}">
+                                            </td>
+
+                                            <!-- ✅ TOGGLE COLUMN — existing items -->
+                                            <td class="text-center">
+                                                <label class="toggle-switch">
+                                                    <input type="checkbox" name="should_deduct[]"
+                                                        value="{{ forloop.counter0 }}" class="toggle-input"
+                                                        {% if item.should_deduct %}checked{% endif %}
+                                                        onchange="updateCounts()">
+                                                    <span class="toggle-slider"></span>
+                                                </label>
+                                            </td>
+
+                                            <!-- ✅ Stock Status Column -->
+                                            <td class="text-center">
+                                                {% if item.was_deducted %}
+                                                <span class="badge bg-success-subtle text-success rounded-pill">
+                                                    <i class="bi bi-check-circle-fill me-1"></i>Stock Deducted
+                                                </span>
+                                                {% else %}
+                                                <span class="badge bg-light text-muted rounded-pill">
+                                                    <i class="bi bi-clock me-1"></i>Pending
+                                                </span>
+                                                {% endif %}
+                                            </td>
+
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-link text-danger p-0"
+                                                    onclick="removeMedicineRow(this)">
+                                                    <i class="bi bi-trash3 fs-5"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                <div id="emptyMessage" class="text-center py-5 text-muted" {% if items %}style="display:none;"{% endif %}>
+                                    <i class="bi bi-capsule-pill d-block mb-3" style="font-size:3rem; opacity:0.2;"></i>
+                                    <p class="mb-0">No medicines added to prescription yet.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    </style>
+    <!-- ===== Medicine Modal ===== -->
+    <div class="modal fade" id="medicineModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom-0 px-4 pt-4">
+                    <h5 class="modal-title fw-bold">Add Medicine</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body px-4">
+                    <!-- Search -->
+                    <div class="search-box mb-4">
+                        <div class="input-group input-group-lg shadow-sm rounded-3 overflow-hidden border">
+                            <span class="input-group-text bg-white border-0"><i
+                                    class="bi bi-search text-primary"></i></span>
+                            <input type="text" id="modalSearchInput" class="form-control border-0 ps-0"
+                                placeholder="Search by medicine name..." autocomplete="off">
+                        </div>
+                    </div>
+
+                    <!-- Search Results -->
+                    <div id="modalSearchResults" class="mb-4 custom-scrollbar"
+                        style="max-height:280px; overflow-y:auto;">
+                        <div class="text-center py-4 text-muted border rounded-3 border-dashed">
+                            <p class="mb-0 small">Results will appear here...</p>
+                        </div>
+                    </div>
+
+                    <!-- Selected Indicator -->
+                    <div id="selectedMedicineInfo"
+                        class="alert bg-primary text-white border-0 rounded-3 d-flex align-items-center justify-content-between mb-4"
+                        style="display:none !important;">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            <div>
+                                <small class="d-block opacity-75"
+                                    style="font-size: 0.7rem; text-transform: uppercase;">Selected Medicine</small>
+                                <span id="selectedMedicineName" class="fw-bold"></span>
+                            </div>11/
+                        </div>
+                        <button type="button" class="btn-close btn-close-white"
+                            onclick="clearSelectedMedicine()"></button>
+                    </div>
+
+                    <!-- Dosage Grid -->
+                    <div class="dosage-container p-3 bg-light rounded-4">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold text-muted">Morning</label>
+                                <div class="input-group shadow-sm">
+                                    <span class="input-group-text bg-white"><i
+                                            class="bi bi-sunrise text-warning"></i></span>
+                                    <input type="number" id="modal_morning" value="0" min="0"
+                                        class="form-control text-center fw-bold">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold text-muted">Afternoon</label>
+                                <div class="input-group shadow-sm">
+                                    <span class="input-group-text bg-white"><i class="bi bi-sun text-danger"></i></span>
+                                    <input type="number" id="modal_afternoon" value="0" min="0"
+                                        class="form-control text-center fw-bold">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold text-muted">Evening</label>
+                                <div class="input-group shadow-sm">
+                                    <span class="input-group-text bg-white"><i
+                                            class="bi bi-sunset text-warning"></i></span>
+                                    <input type="number" id="modal_evening" value="0" min="0"
+                                        class="form-control text-center fw-bold">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold text-muted">Night</label>
+                                <div class="input-group shadow-sm">
+                                    <span class="input-group-text bg-white"><i
+                                            class="bi bi-moon-stars text-primary"></i></span>
+                                    <input type="number" id="modal_night" value="0" min="0"
+                                        class="form-control text-center fw-bold">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Meal Timing</label>
+                                <select id="modal_meal" class="form-select shadow-sm">
+                                    <option value="after_food">After Food</option>
+                                    <option value="before_food">Before Food</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Duration (Days)</label>
+                                <div class="input-group shadow-sm">
+                                    <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i></span>
+                                    <input type="number" id="modal_days" value="7" min="1" class="form-control fw-bold">
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-muted">Medicine Notes <span
+                                        class="fw-normal">(Optional)</span></label>
+                                <textarea id="modal_medicine_notes" class="form-control" rows="2"
+                                    placeholder="Example: Take with warm water, avoid empty stomach, SOS instruction..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-top-0 px-4 pb-4 pt-3">
+                    <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal"
+                        onclick="resetModalForm()">Close</button>
+                    <button type="button" class="btn btn-outline-primary px-4 rounded-pill"
+                        onclick="saveMedicine(false)">Add & Another</button>
+                    <button type="button" class="btn btn-primary px-4 rounded-pill" onclick="saveMedicine(true)">Add to
+                        List</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== STYLES ===== -->
+
+    <link rel="stylesheet" href="{% static 'assets/css/prescription.css' %}">
+
+
+    <!-- ===== Toast Notification Container ===== -->
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container-custom position-fixed"
+        style="top: 20px; right: 20px; z-index: 9999;"></div>
+
+    <!-- ===== SCRIPTS ===== -->
+    <script src="{% static 'assets/js/prescription.js' %}?v={% now 'U' %}"></script>
+</main>
+{% endblock %}

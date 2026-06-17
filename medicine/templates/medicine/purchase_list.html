@@ -1,0 +1,210 @@
+{% extends "doctor/main.html" %}
+{% load hashid_tags %}
+{% load static %}
+{% block title %}Purchase Orders - Medicine Store{% endblock %}
+{% block content %}
+
+<main class="main-content" id="mainContent">
+
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="page-title mb-1">Purchase Orders</h2>
+            <p class="text-muted small mb-0">Track all medicine purchases from vendors</p>
+        </div>
+        <a href="{% url 'medicine:add_purchase' %}" class="btn btn-primary add-patient-btn">
+            <i class="bi bi-plus-lg"></i> Add Purchase
+        </a>
+    </div>
+
+    <!-- Messages -->
+    
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4" id="statsContainer">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+                <div style="font-size:2rem; color:#0066cc; font-weight:700;">{{ total_purchases }}</div>
+                <div class="text-muted small">Total Purchases</div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
+                <div style="font-size:2rem; color:#fd7e14; font-weight:700;">
+                    ₹{{ total_spending|floatformat:0 }}
+                </div>
+                <div class="text-muted small">Total Spending</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="table-section mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Search</label>
+                <input type="text" id="purchaseSearch" class="form-control" placeholder="Vendor or medicine name..."
+                    value="{{ search }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Date</label>
+                <input type="date" id="purchaseDate" class="form-control" value="{{ purchase_date }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Status</label>
+                <select id="purchaseStatus" class="form-select">
+                    <option value="all" {% if status == "all" %}selected{% endif %}>All</option>
+                    <option value="ordered" {% if status == "ordered" %}selected{% endif %}>Ordered</option>
+                    <option value="received" {% if status == "received" %}selected{% endif %}>Received</option>
+                    <option value="draft" {% if status == "draft" %}selected{% endif %}>Draft</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="button" id="clearBtn" class="btn btn-outline-primary w-100" style="border: 1px solid #0d6efd !important;">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="table-section">
+        <div id="tableContainer" style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; display: block;">
+            <table class="table table-custom" style="min-width: 950px; width: 100%;">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Vendor Name</th>
+                        <th>Date</th>
+                        <th>Items</th>
+                        <th>Total Amount</th>
+                        <th>Status</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    {% for purchase in purchases %}
+                    <tr class="purchase-row">
+                        <td class="patient-info fw-semibold">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+
+                        <td class="patient-name">
+                            <div class="d-flex align-items-center">
+                                <div class="vendor-avatar rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
+                                    style="width: 36px; height: 36px; font-weight: 600; font-size: 0.9rem;">
+                                    {{ purchase.vendor.name|first|upper }}
+                                </div>
+                                <span class="fw-semibold">{{ purchase.vendor.name }}</span>
+                            </div>
+                        </td>
+
+                        <td class="patient-info">
+                            <i class="bi bi-calendar-event me-2" style="color: #0066cc;"></i>
+                            <span>{{ purchase.date|date:"d M, Y" }}</span>
+                        </td>
+
+                        <td class="patient-info">
+                            <span class="badge bg-info text-dark rounded-pill px-3">
+                                {{ purchase.items.count }} item{{ purchase.items.count|pluralize }}
+                            </span>
+                            <div class="text-muted small mt-1">
+                                {% for item in purchase.items.all %}
+                                <div>
+                                    {{ item.medicine_variant.medicine.name }} -
+                                    {{ item.quantity_strips }} strip{{ item.quantity_strips|pluralize }} -
+                                    ₹{{ item.final_amount|floatformat:2 }}
+                                </div>
+                                {% empty %}
+                                No items added
+                                {% endfor %}
+                            </div>
+                        </td>
+
+                        <td class="patient-info">
+                            <div class="fw-bold" style="color: #28a745; font-size: 1.1rem;">
+                                ₹{{ purchase.total_amount|floatformat:2 }}
+                            </div>
+                        </td>
+
+                        <td>
+                            {% if purchase.status == "received" %}
+                            <span class="badge bg-success">Received</span>
+                            {% elif purchase.status == "ordered" %}
+                            <span class="badge bg-warning text-dark">Ordered</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ purchase.status|default:"Draft"|capfirst }}</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <a href="{% url 'medicine:purchase_detail' purchase.id|hid %}"
+                                    class="btn btn-primary btn-sm d-flex align-items-center gap-1" title="View Details">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <form method="post" action="{% url 'medicine:delete_purchase' purchase.id|hid %}" class="m-0 deletePurchaseForm">
+
+                                    {% csrf_token %}
+
+                                    <button type="submit" class="btn btn-danger btn-sm d-flex align-items-center gap-1" title="Delete Purchase">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="empty-state">
+                                <div class="empty-state-icon mb-3">
+                                    <i class="bi bi-inbox" style="font-size: 2.5rem; color: #ccc;"></i>
+                                </div>
+                                <p class="text-muted mb-3">No purchase orders yet</p>
+                                <a href="{% url 'medicine:add_purchase' %}" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-plus-lg me-1"></i> Create First Purchase
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div id="paginationContainer">
+            <div id="paginationWrapper" class="d-flex justify-content-center mt-3">
+                {% if page_obj.paginator.num_pages > 1 %}
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link pagination-link" data-page="{{ page_obj.previous_page_number }}"
+                            href="#">Prev</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link pagination-link" data-page="{{ page_obj.next_page_number }}"
+                            href="#">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<script src="{% static 'assets/js/purchase_list.js' %}"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
+
+{% endblock %}

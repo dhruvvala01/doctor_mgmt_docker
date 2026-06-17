@@ -1,0 +1,372 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Clinic</title>
+    <!-- Bootstrap for Utility Classes -->
+    <link href="{% static 'assets/css/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'assets/bootstrap-icons/font/bootstrap-icons.css' %}">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 400px;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: none;
+        }
+
+        .auth-header {
+            background: #4183ff;
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .auth-header h2 {
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .auth-header p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .auth-body {
+            padding: 30px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #333;
+        }
+
+        .form-control {
+            border-radius: 8px;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+
+        .form-control:focus {
+            border-color: #4183ff;
+            box-shadow: 0 0 0 3px rgba(65, 131, 255, 0.1);
+        }
+
+        .btn-login {
+            background: #0f62fb;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: 0.3s;
+        }
+
+        .btn-login:hover {
+            background: #1b90e3;
+            color: rgb(196, 207, 215);
+        }
+
+        .auth-footer {
+            background: #fdfdfd;
+            border-top: 1px solid #eee;
+            padding: 15px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .auth-footer a {
+            color: #4183ff;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .signup-link {
+            color: #4183ff;
+            font-weight: 600;
+            text-decoration: none;
+            margin-left: 5px;
+        }
+
+        .signup-link:hover {
+            text-decoration: underline;
+            color: #1b90e3;
+        }
+
+        .error-message {
+            background: #fee;
+            border-left: 4px solid #c33;
+            color: #c33;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .helper-text {
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .password-toggle-wrapper {
+            position: relative;
+        }
+
+        .password-toggle-wrapper .form-control {
+            padding-right: 3rem;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 0.85rem;
+            top: 0;
+            bottom: 0;
+            margin: auto 0;
+            background: transparent;
+            border: none;
+            color: #4183ff;
+            cursor: pointer;
+            padding: 0.35rem;
+            font-size: 1rem;
+            line-height: 1;
+            height: 1.9rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .password-toggle:hover {
+            color: #1b6be0;
+        }
+
+        .password-toggle:focus {
+            outline: none;
+            box-shadow: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="auth-card">
+        <!-- Header Section -->
+        <div class="auth-header">
+            <h2>Welcome Back</h2>
+            <p>Login to your clinic account</p>
+        </div>
+
+        <div class="auth-body">
+            <!-- Global Alert Container -->
+            <div id="alert-container"></div>
+
+            <form id="login-form" novalidate>
+                {% csrf_token %}
+
+                <!-- Step 1: Phone -->
+                <div id="step-phone">
+                    <div class="mb-3">
+                        <label class="form-label" for="phone">Phone Number</label> <span class="helper-text">Format: 1234567890 </span>
+                        <input 
+                            type="tel" 
+                            id="phone"
+                            name="phone" 
+                            class="form-control" 
+                            placeholder="9876543210"
+                            pattern="[0-9\s\-\+\(\)]+"
+                            required
+                            autocomplete="tel"
+                        >
+                    </div>
+                    <button type="button" id="btn-get-otp" class="btn btn-login shadow-sm">
+                        Get OTP
+                    </button>
+                </div>
+
+                <!-- Step 2: OTP (Hidden initially) -->
+                <div id="step-otp" style="display: none;">
+                    <div id="otp-alert" class="alert alert-success py-2 text-center" style="background-color: #d4edda; color: #155724; border-radius: 5px; margin-bottom: 15px; display: none;">
+                        OTP has been generated: <strong id="debug-otp-display"></strong><br>
+                        <small>Please enter it below.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label" for="otp">Enter OTP</label>
+                        <input 
+                            type="text" 
+                            id="otp"
+                            name="otp" 
+                            class="form-control" 
+                            placeholder="6-digit OTP" 
+                            maxlength="6"
+                            autocomplete="off"
+                        >
+                    </div>
+                    <button type="button" id="btn-verify-otp" class="btn btn-login shadow-sm" style="display: none;">
+                        Verify OTP
+                    </button>
+                    <div class="text-center mt-3">
+                        <a href="#" id="btn-back" style="font-size: 0.85rem; color: #4183ff; text-decoration: none;">Change Phone Number</a>
+                    </div>
+                </div>
+
+                <!-- Sign Up Link -->
+                <p class="text-center mt-3 mb-0" style="font-size: 0.9rem;">
+                    Not registered?
+                    <a href="{% url 'signup' %}" class="signup-link">Sign Up</a>
+                </p>
+            </form>
+        </div>
+
+        <!-- Footer Section -->
+        <div class="auth-footer">
+            If you are Doctor, <a href="{% url 'doctor:login' %}">Login</a> here
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnGetOtp = document.getElementById('btn-get-otp');
+        const phoneInput = document.getElementById('phone');
+        const stepPhone = document.getElementById('step-phone');
+        const stepOtp = document.getElementById('step-otp');
+        const otpInput = document.getElementById('otp');
+        const alertContainer = document.getElementById('alert-container');
+        const debugOtpDisplay = document.getElementById('debug-otp-display');
+        const otpAlert = document.getElementById('otp-alert');
+        const btnBack = document.getElementById('btn-back');
+
+        function showAlert(message, type='danger') {
+            alertContainer.innerHTML = `<div class="error-message" style="background: ${type === 'danger' ? '#fee' : '#d4edda'}; color: ${type === 'danger' ? '#c33' : '#155724'}; border-left-color: ${type === 'danger' ? '#c33' : '#155724'}; padding: 10px 15px; border-radius: 4px; margin-bottom: 20px; font-size: 0.9rem; border-left: 4px solid;">${message}</div>`;
+        }
+
+        function clearAlert() {
+            alertContainer.innerHTML = '';
+        }
+
+        btnGetOtp.addEventListener('click', function() {
+            const phone = phoneInput.value.trim();
+            if (!phone) {
+                showAlert('Please enter your phone number.');
+                return;
+            }
+
+            clearAlert();
+            btnGetOtp.disabled = true;
+            btnGetOtp.innerText = 'Sending...';
+
+            fetch('{% url "login" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ phone: phone })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Server returned ' + response.status + '. Please refresh the page and try again.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                btnGetOtp.disabled = false;
+                btnGetOtp.innerText = 'Get OTP';
+
+                if (data.success) {
+                    stepPhone.style.display = 'none';
+                    stepOtp.style.display = 'block';
+                    otpInput.value = '';
+                    otpInput.focus();
+
+                    if (data.debug_otp) {
+                        debugOtpDisplay.innerText = data.debug_otp;
+                        otpAlert.style.display = 'block';
+                    }
+                } else {
+                    showAlert(data.error || 'Failed to generate OTP.');
+                }
+            })
+            .catch(err => {
+                btnGetOtp.disabled = false;
+                btnGetOtp.innerText = 'Get OTP';
+                showAlert(err.message || 'A network error occurred. Please refresh and try again.');
+            });
+        });
+
+        otpInput.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if (this.value.length === 6) {
+                verifyOtp(this.value);
+            }
+        });
+
+        function verifyOtp(otp) {
+            clearAlert();
+            otpInput.disabled = true;
+
+            fetch('{% url "login" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ otp: otp })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Server returned ' + response.status + '. Please refresh the page and try again.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    otpInput.disabled = false;
+                    showAlert(data.error || 'Invalid OTP.');
+                    otpInput.value = '';
+                    otpInput.focus();
+                }
+            })
+            .catch(err => {
+                otpInput.disabled = false;
+                showAlert(err.message || 'A network error occurred. Please refresh and try again.');
+            });
+        }
+
+        btnBack.addEventListener('click', function(e) {
+            e.preventDefault();
+            stepOtp.style.display = 'none';
+            stepPhone.style.display = 'block';
+            clearAlert();
+            otpInput.value = '';
+        });
+    });
+    </script>
+
+</body>
+
+</html>

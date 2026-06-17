@@ -1,0 +1,215 @@
+{% extends "doctor/main.html" %}
+{% block title %}Manage Staff{% endblock %}
+{% block content %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'assets/css/staff.css' %}">
+
+<main class="main-content" id="mainContent">
+    {% csrf_token %}
+    <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="page-title mb-1">Staff Members</h2>
+            <p class="text-muted small mb-0">Manage biller accounts and access status.</p>
+        </div>
+        <button class="action-btn" id="openAddStaff">
+            <i class="bi bi-plus-lg"></i> Add Staff
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2" style="font-size: 0.98rem; font-weight: 700;">
+                <i class="bi bi-person-lines-fill"></i> Billers
+            </div>
+            <span class="badge bg-light text-primary">{{ billers|length }} member{{ billers|length|pluralize }}</span>
+        </div>
+
+        <div class="card-body p-0">
+            <div style="overflow-x:auto; -webkit-overflow-scrolling:touch; display:block; width:100%;">
+                {% if billers %}
+                <table class="table table-hover mb-0" style="min-width:900px; width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Staff</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staffTableBody">
+                        {% for member in billers %}
+                        <tr id="row-{{ member.id }}">
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="user-avatar" style="width: 40px; height: 40px; font-size: 0.9rem;">
+                                        {{member.user.first_name|slice:":1"|upper|default:member.user.username|slice:":1"|upper}}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight:600;">
+                                            {{member.user.get_full_name|default:member.user.username }}</div>
+                                        <div style="font-size:0.78rem;color:#888;">Biller</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ member.user.username }}</td>
+                            <td>{{ member.user.email|default:"—" }}</td>
+                            <td>{{ member.phone|default:"—" }}</td>
+                            <td>
+                                {% if member.user.is_active %}
+                                <span class="badge bg-success bg-opacity-25 text-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-danger bg-opacity-25 text-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-sm btn-edit-staff" data-id="{{ member.id }}"
+                                        data-name="{{ member.user.get_full_name|default:member.user.username }}"
+                                        data-email="{{ member.user.email }}" data-phone="{{ member.phone }}"
+                                        data-active="{{ member.user.is_active|lower }}" title="Edit">
+                                        <i class="bi bi-pencil"></i><span>Edit</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-reset-pwd" data-id="{{ member.id }}"
+                                        data-name="{{ member.user.get_full_name|default:member.user.username }}"
+                                        title="Reset Password">
+                                        <i class="bi bi-key"></i><span>Password</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-delete-staff" data-id="{{ member.id }}"
+                                        data-name="{{ member.user.get_full_name|default:member.user.username }}"
+                                        title="Delete">
+                                        <i class="bi bi-trash"></i><span>Delete</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-person-x" style="font-size:2rem;color:#cbd5e1;display:block;margin-bottom:8px;"></i>
+                    No staff members found. Add one to get started.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ══════════════════ ADD STAFF MODAL ══════════════════ -->
+    <div class="modal-overlay" id="addStaffModal">
+        <div class="modal-box">
+            <h5><i class="bi bi-person-plus"></i> Add Staff Member</h5>
+
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--primary-color); margin: 16px 0 10px;">
+                Personal Info</div>
+            <div class="mb-2">
+                <label class="form-label">Full Name *</label>
+                <input type="text" class="form-control" id="addName" placeholder="e.g. Rahul Sharma">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" id="addPhone" placeholder="e.g. 9876543210" maxlength="15">
+            </div>
+
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--primary-color); margin: 16px 0 10px;">Account
+                Info</div>
+            <div class="mb-2">
+                <label class="form-label">Username *</label>
+                <input type="text" class="form-control" id="addUsername" placeholder="login username">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" id="addEmail" placeholder="optional">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password *</label>
+                <div class="pwd-wrapper">
+                    <input type="password" class="form-control" id="addPassword" placeholder="min 6 characters">
+                    <i class="bi bi-eye pwd-toggle" onclick="togglePwd('addPassword', this)"></i>
+                </div>
+            </div>
+
+            <div class="modal-err" id="addErr"></div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-light flex-grow-1" id="closeAddStaff">Cancel</button>
+                <button class="btn btn-primary flex-grow-1" id="saveAddStaff">Add Staff</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ══════════════════ EDIT STAFF MODAL ══════════════════ -->
+    <div class="modal-overlay" id="editStaffModal">
+        <div class="modal-box">
+            <h5><i class="bi bi-pencil-square"></i> Edit Staff Member</h5>
+            <input type="hidden" id="editStaffId">
+
+            <div class="mb-2">
+                <label class="form-label">Full Name *</label>
+                <input type="text" class="form-control" id="editStaffName">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" id="editStaffEmail">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" id="editStaffPhone" maxlength="15">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="editStaffActive">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+
+            <div class="modal-err" id="editErr"></div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-light flex-grow-1" id="closeEditStaff">Cancel</button>
+                <button class="btn btn-primary flex-grow-1" id="saveEditStaff">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ══════════════════ RESET PASSWORD MODAL ══════════════════ -->
+    <div class="modal-overlay" id="resetPwdModal">
+        <div class="modal-box">
+            <h5><i class="bi bi-key"></i> Reset Password</h5>
+            <input type="hidden" id="resetPwdId">
+            <p style="font-size:0.88rem;color:#666;margin-bottom:14px;">
+                Resetting password for: <strong id="resetPwdName"></strong>
+            </p>
+
+            <div class="mb-2">
+                <label class="form-label">New Password *</label>
+                <div class="pwd-wrapper">
+                    <input type="password" class="form-control" id="newPwd" placeholder="min 6 characters">
+                    <i class="bi bi-eye pwd-toggle" onclick="togglePwd('newPwd', this)"></i>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Confirm Password *</label>
+                <div class="pwd-wrapper">
+                    <input type="password" class="form-control" id="confirmPwd" placeholder="re-enter password">
+                    <i class="bi bi-eye pwd-toggle" onclick="togglePwd('confirmPwd', this)"></i>
+                </div>
+            </div>
+
+            <div class="modal-err" id="pwdErr"></div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-light flex-grow-1" id="closeResetPwd">Cancel</button>
+                <button class="btn btn-primary flex-grow-1" id="saveResetPwd">Reset Password</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{% static 'assets/js/staff.js' %}?v={% now 'U' %}"></script>
+</main>
+
+{% endblock %}

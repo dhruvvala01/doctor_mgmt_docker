@@ -1,0 +1,184 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bill #{{ bill.bill_number }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'assets/css/bill_print.css' %}">
+</head>
+<body>
+
+    <div class="print-btn-container">
+        <button class="print-btn" onclick="window.print()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Print Invoice
+        </button>
+    </div>
+
+    <!-- Header -->
+    <div class="invoice-header">
+        <div class="clinic-brand">
+            <div class="clinic-logo-name">
+                {% if clinic.logo %}
+                <img src="{{clinic.logo.url}}" alt="Clinic Logo" style="width:45px;height:45px;border-radius:50%;object-fit:cover;">
+                {% else %}
+                <span style="display:flex;align-items:center;justify-content:center;width:45px;height:45px;border-radius:50%;background:var(--primary-light);color:var(--primary-color);font-size:11px;font-weight:700;border:1.5px solid var(--primary-color);">CLINIC</span>
+                {% endif %}
+                {{clinic.clinic_name}}
+            </div>
+            <div class="clinic-address">
+                {{clinic.address}}
+                {{clinic.phone}}
+                {{clinic.email}}
+            </div>
+        </div>
+        <div class="invoice-title-box">
+            <div class="invoice-title">INVOICE</div>
+            <div class="bill-number"># {{ bill.bill_number }}</div>
+        </div>
+    </div>
+
+    <!-- Details Grid -->
+    <div class="info-grid">
+        <!-- Patient -->
+        <div class="info-card" style="border-color: #3b82f6;">
+            <h6>Patient Information</h6>
+            <div class="info-row">
+                <span class="info-label">Name</span>
+                <span class="info-value">{% if visit.appointment.family_member %}
+                                                                {{ visit.appointment.family_member.name }}
+                                                             {% else %}
+                                                                {{ visit.appointment.patient.user.get_full_name }}
+                                                             {% endif %}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Contact</span>
+                <span class="info-value">{{ visit.patient.phone|default:"N/A" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Visit Date</span>
+                <span class="info-value">{{ visit.appointment.appointment_date|date:"d M, Y" }}</span>
+            </div>
+        </div>
+
+        <!-- Doctor -->
+        <div class="info-card" style="border-color: #10b981;">
+            <h6>Doctor Information</h6>
+            <div class="info-row">
+                <span class="info-label">Consulting Doctor</span>
+                <span class="info-value">Dr. {{ request.user.first_name }} {{ request.user.username }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Diagnosis</span>
+                <span class="info-value">{{ visit.diagnosis|truncatewords:6|default:"Not specified" }}</span>
+            </div>
+        </div>
+
+        <!-- Bill -->
+        <div class="info-card" style="border-color: #8b5cf6;">
+            <h6>Billing Details</h6>
+            <div class="info-row">
+                <span class="info-label">Invoice Date</span>
+                <span class="info-value">{{ bill.bill_date|date:"d M, Y" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Payment Method</span>
+                <span class="info-value" style="text-transform: capitalize;">{{ bill.get_payment_method_display }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th width="5%">#</th>
+                    <th width="45%">Description (Medicine / Service)</th>
+                    <th width="15%">Power</th>
+                    <th width="10%" class="text-center">Qty</th>
+                    
+                    <th width="13%" class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in bill.items.all %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td class="item-name">{{ item.medicine_name }}</td>
+                    <td>{{ item.power }}</td>
+                    <td class="text-center">{{ item.quantity }}</td>
+                    
+                    <td class="text-right"><strong>₹{{ item.total_price|floatformat:2 }}</strong></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center" style="color: var(--text-muted); padding: 30px;">
+                        No medicines prescribed in this bill.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Totals Area -->
+    <div class="summary-wrapper">
+        <div class="totals-box">
+            <div class="total-row">
+                <span>Consultation Fee</span>
+                <span>₹{{ bill.consultation_fee|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>Medicines Subtotal</span>
+                <span>₹{{ bill.subtotal|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>GST ({{ bill.gst_percent }}%)</span>
+                <span>₹{{ bill.gst_amount|floatformat:2 }}</span>
+            </div>
+            <div class="total-row" style="color: #16a34a;">
+                <span>Discount</span>
+                <span>- ₹{{ bill.discount|floatformat:2 }}</span>
+            </div>
+            <div class="total-row grand-total">
+                <span>Total Amount</span>
+                <span>₹{{ bill.total|floatformat:2 }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Section -->
+    <div class="bottom-section">
+        <div class="payment-status-box">
+            <span style="color: var(--text-muted); font-size: 13px;">Payment Status:</span>
+            <span class="status-badge 
+                {% if bill.payment_status == 'paid' %}badge-paid
+                {% elif bill.payment_status == 'partial' %}badge-partial
+                {% else %}badge-unpaid{% endif %}">
+                {{ bill.get_payment_status_display }}
+            </span>
+        </div>
+
+        {% if bill.notes %}
+        <div class="notes-box">
+            <strong>Remarks / Notes:</strong><br>
+            {{ bill.notes }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-thankyou">Thank you for trusting {{clinic.clinic_name}}</div>
+        <div>This is a computer-generated invoice and does not require a physical signature.</div>
+        <div style="margin-top: 4px; color: #94a3b8;">For any queries, please contact our support desk.</div>
+    </div>
+
+</body>
+</html>

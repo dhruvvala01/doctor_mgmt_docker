@@ -1,0 +1,198 @@
+{% extends "doctor/main.html" %}
+{% load hashid_tags %}
+{% load static %}
+{% block title %}Add Purchase - Medicine Store{% endblock %}
+{% block content %}
+
+<main class="main-content" id="mainContent">
+    <div class="patient-form-shell">
+        <div class="page-header patient-form-header">
+            <div>
+                <h2 class="page-title mb-0">Add Purchase</h2>
+                <p class="page-subtitle">Create a new purchase order from vendor.</p>
+            </div>
+            <a href="{% url 'medicine:purchase_list' %}" class="patient-link-btn">
+                <i class="bi bi-arrow-left me-2"></i>Purchase List
+            </a>
+        </div>
+
+        <div class="patient-form-card">
+            <form method="POST" action="{% url 'medicine:add_purchase' %}" class="patient-form-grid">
+                {% csrf_token %}
+
+                
+
+                <!-- Vendor Select -->
+                <div class="patient-field">
+                    <label class="patient-label" for="vendor">
+                        <i class="bi bi-building me-1" style="color:#0066cc;"></i>
+                        Select Vendor <span style="color:#dc3545;">*</span>
+                    </label>
+                    <select id="vendor" name="vendor" class="patient-input" required>
+                        <option value="">-- Select Vendor --</option>
+                        {% for vendor in vendors %}
+                            <option value="{{ vendor.pk }}">
+                                {{ vendor.name }}
+                                {% if vendor.phone %}({{ vendor.phone }}){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted mt-1 d-block">
+                        Don't have a vendor?
+                        <a href="{% url 'medicine:add_vendor' %}" target="_blank">Add Vendor</a>
+                    </small>
+                </div>
+
+                <!-- Purchase Items -->
+                <div style="margin-top:8px;">
+                    <div style="display:flex; justify-content:space-between;
+                                align-items:center; margin-bottom:12px;">
+                        <label class="patient-label mb-0">
+                            <i class="bi bi-box-seam me-1" style="color:#0066cc;"></i>
+                            Purchase Items
+                        </label>
+                        <button type="button" id="addItemBtn"
+                            class="btn btn-sm btn-outline-primary"
+                            style="border-radius:8px; font-size:0.82rem;">
+                            <i class="bi bi-plus-circle"></i> Add Item
+                        </button>
+                    </div>
+
+                    <div id="itemsContainer">
+
+                        {% if preselected_variant %}
+                        <!-- Pre-selected from Low Stock -->
+                        <div class="purchase-item-row"
+                            style="background:#f8fbff; border:1px solid #c8d8f0;
+                                   border-radius:10px; padding:14px; margin-bottom:12px;">
+
+                            <!-- Low stock badge -->
+                            <div class="mb-2">
+                                {% if preselected_variant.stock <= 0 %}
+                                <span class="badge bg-danger text-white">
+                                    <i class="bi bi-x-circle me-1"></i>
+                                    Out of Stock Order
+                                </span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    Low Stock Order
+                                </span>
+                                {% endif %}
+                                <span class="ms-2 text-muted small">
+                                    Current Stock: {{ preselected_variant.stock }}
+                                    (Alert at {{ preselected_variant.low_stock_alert }})
+                                </span>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns:2fr 1fr 1fr auto;
+                                        gap:10px; align-items:end;">
+                                <div style="position:relative;">
+                                    <label class="patient-label" style="font-size:0.78rem;">Medicine</label>
+                                    <input type="text" class="patient-input medicine-search"
+                                        value="{{ preselected_variant.medicine.name }}"
+                                        placeholder="Name, short name, or company..." autocomplete="off">
+                                    <input type="hidden" name="variant_id[]" class="variant-id"
+                                        value="{{ preselected_variant.pk }}">
+                                    <input type="hidden" name="strip_price[]" value="0">
+                                    <input type="hidden" name="tax_percent[]" value="0">
+                                    <input type="hidden" name="discount_amount[]" value="0">
+                                    <div class="autocomplete-list"
+                                        style="display:none; position:absolute; top:100%; left:0; right:0;
+                                               background:white; border:1px solid #ddd; border-top:none;
+                                               border-radius:0 0 8px 8px; max-height:280px; overflow-y:auto;
+                                               z-index:1000; box-shadow:0 4px 8px rgba(0,0,0,0.12);">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="patient-label" style="font-size:0.78rem;">Qty Strips</label>
+                                    <input type="number" name="quantity_strips[]"
+                                        class="patient-input" placeholder="e.g. 10"
+                                        min="1" required>
+                                </div>
+                                <div>
+                                    <label class="patient-label" style="font-size:0.78rem;">Unit/Strip</label>
+                                    <input type="number" name="unit_per_strip[]"
+                                        class="patient-input"
+                                        value="{{ preselected_variant.unit_per_strip|default:10 }}"
+                                        min="1" required>
+                                </div>
+                                <div style="padding-bottom:2px;">
+                                    <button type="button"
+                                        class="btn btn-sm btn-outline-danger remove-item-btn"
+                                        style="border-radius:8px;" disabled>
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% else %}
+                        <!-- Default blank row -->
+                        <div class="purchase-item-row"
+                            style="background:#f8fbff; border:1px solid #e2e8f0;
+                                   border-radius:10px; padding:14px; margin-bottom:12px;">
+                            <div style="display:grid; grid-template-columns:2fr 1fr 1fr auto;
+                                        gap:10px; align-items:end;">
+                                <div style="position:relative;">
+                                    <label class="patient-label" style="font-size:0.78rem;">Medicine</label>
+                                    <input type="text" class="patient-input medicine-search"
+                                        placeholder="Name, short name, or company..." autocomplete="off">
+                                    <input type="hidden" name="variant_id[]" class="variant-id">
+                                    <input type="hidden" name="strip_price[]" value="0">
+                                    <input type="hidden" name="tax_percent[]" value="0">
+                                    <input type="hidden" name="discount_amount[]" value="0">
+                                    <div class="autocomplete-list"
+                                        style="display:none; position:absolute; top:100%; left:0; right:0;
+                                               background:white; border:1px solid #ddd; border-top:none;
+                                               border-radius:0 0 8px 8px; max-height:280px; overflow-y:auto;
+                                               z-index:1000; box-shadow:0 4px 8px rgba(0,0,0,0.12);">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="patient-label" style="font-size:0.78rem;">Qty Strips</label>
+                                    <input type="number" name="quantity_strips[]"
+                                        class="patient-input" placeholder="e.g. 10"
+                                        min="1" required>
+                                </div>
+                                <div>
+                                    <label class="patient-label" style="font-size:0.78rem;">Unit/Strip</label>
+                                    <input type="number" name="unit_per_strip[]"
+                                        class="patient-input" placeholder="e.g. 10"
+                                        min="1" required>
+                                </div>
+                                <div style="padding-bottom:2px;">
+                                    <button type="button"
+                                        class="btn btn-sm btn-outline-danger remove-item-btn"
+                                        style="border-radius:8px;" disabled>
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="patient-form-actions">
+                    <button type="submit" class="patient-submit-btn me-2    ">
+                        <i class="bi bi-check2-circle"></i>
+                        <span>Save Purchase</span>
+                    </button>
+                    <a href="{% url 'medicine:purchase_list' %}"
+                        class="btn btn-outline-secondary"
+                        style="border-radius:8px; padding:10px 20px; font-weight:600;">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</main>
+
+<script src="{% static 'assets/js/add_purchase.js' %}"></script>
+
+{% endblock %}

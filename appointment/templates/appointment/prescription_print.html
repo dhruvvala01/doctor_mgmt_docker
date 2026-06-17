@@ -1,0 +1,182 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Prescription - {{ visit.patient.user.get_full_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'assets/css/prescription_print.css' %}">
+</head>
+<body>
+
+    <div class="print-btn-container">
+        <button class="print-btn" onclick="window.print()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Print Prescription
+        </button>
+    </div>
+
+    <!-- Header -->
+    <div class="invoice-header">
+        <div class="clinic-brand">
+            <div class="clinic-logo-name">
+                {% if clinic.logo %}
+                <img src="{{clinic.logo.url}}" alt="Clinic Logo" style="width:45px;height:45px;border-radius:50%;object-fit:cover;">
+                {% else %}
+                <span style="display:flex;align-items:center;justify-content:center;width:45px;height:45px;border-radius:50%;background:var(--primary-light);color:var(--primary-color);font-size:11px;font-weight:700;border:1.5px solid var(--primary-color);">CLINIC</span>
+                {% endif %}
+                {{clinic.clinic_name}}
+            </div>
+            <div class="clinic-address">
+                {{clinic.address}}<br>
+                Phone: {{clinic.phone}}<br>
+                Email: {{clinic.email}}
+            </div>
+        </div>
+        <div class="invoice-title-box">
+            <div class="invoice-title">PRESCRIPTION</div>
+            <div class="bill-number">Date: {% if visit.appointment %}{{ visit.appointment.appointment_date|date:"d M, Y" }}{% else %}{{ visit.created_at|date:"d M, Y" }}{% endif %}</div>
+        </div>
+    </div>
+
+    <!-- Details Grid -->
+    <div class="info-grid">
+        <!-- Patient -->
+        <div class="info-card" style="border-color: #3b82f6;">
+            <h6>Patient Information</h6>
+            <div class="info-row">
+                <span class="info-label">Name</span>
+                <span class="info-value">
+                    {% if visit.appointment and visit.appointment.family_member %}
+                        {{ visit.appointment.family_member.name }}
+                    {% else %}
+                        {{ visit.patient.user.get_full_name }}
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Age / Gender</span>
+                <span class="info-value">
+                    {% if visit.appointment and visit.appointment.family_member %}
+                        {{ visit.appointment.family_member.gender|default:"Not specified"|capfirst }}
+                    {% else %}
+                        {{ visit.patient.gender|default:"Not specified"|capfirst }}
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Contact</span>
+                <span class="info-value">{{ visit.patient.phone|default:"N/A" }}</span>
+            </div>
+        </div>
+
+        <!-- Doctor -->
+        <div class="info-card" style="border-color: #10b981;">
+            <h6>Consulting Doctor</h6>
+            <div class="info-row">
+                <span class="info-label">Name</span>
+                <span class="info-value">Dr. {% if visit.doctor %}{{ visit.doctor.user.get_full_name|default:visit.doctor.user.username }}{% elif visit.appointment and visit.appointment.doctor %}{{ visit.appointment.doctor.user.get_full_name|default:visit.appointment.doctor.user.username }}{% elif default_doctor %}{{ default_doctor.user.get_full_name|default:default_doctor.user.username }}{% else %}N/A{% endif %}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Specialization</span>
+                <span class="info-value">{{ clinic.specialization|default:"General Physician" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Reg. No.</span>
+                <span class="info-value">{{ clinic.registration_no|default:"N/A" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Visit Notes -->
+    <div class="visit-notes">
+        <h6>Clinical Notes</h6>
+        {% if visit.symptoms %}
+        <div class="note-group">
+            <span class="note-label">Symptoms:</span>
+            <div class="note-text">{{ visit.symptoms }}</div>
+        </div>
+        {% endif %}
+        {% if visit.diagnosis %}
+        <div class="note-group">
+            <span class="note-label">Diagnosis:</span>
+            <div class="note-text">{{ visit.diagnosis }}</div>
+        </div>
+        {% endif %}
+        {% if visit.notes %}
+        <div class="note-group">
+            <span class="note-label">Remarks:</span>
+            <div class="note-text">{{ visit.notes }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Items Table -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th width="5%">#</th>
+                    <th width="40%">Medicine Name</th>
+                    <th width="20%">Dosage</th>
+                    <th width="20%">Duration</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in prescription_items %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>
+                        <span class="item-name">{{ item.medicine_variant.medicine.name }}</span>
+                        <span class="item-type">{{ item.medicine_variant.medicine.get_medicine_type_display }} • {{ item.medicine_variant.power }}</span>
+                    </td>
+                    <td>
+                        <span class="dosage-badge">{{ item.dosage }}</span>
+                        <span class="meal-timing">
+                            {% if 'after_food' in item.notes|lower or 'After Food' in item.notes %}
+                                After Food
+                            {% elif 'before_food' in item.notes|lower or 'Before Food' in item.notes %}
+                                Before Food
+                            {% else %}
+                                As Directed
+                            {% endif %}
+                        </span>
+                        {% if item.notes %}
+                        <span class="med-notes">{{ item.notes }}</span>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ item.days }} Days</strong></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center" style="color: var(--text-muted); padding: 30px;">
+                        No medicines prescribed.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Signature -->
+    <div class="signature-area">
+        <div class="signature-box">
+            <div class="signature-line"></div>
+            <div class="signature-name">Dr. {% if visit.doctor %}{{ visit.doctor.user.get_full_name|default:visit.doctor.user.username }}{% elif visit.appointment and visit.appointment.doctor %}{{ visit.appointment.doctor.user.get_full_name|default:visit.appointment.doctor.user.username }}{% elif default_doctor %}{{ default_doctor.user.get_full_name|default:default_doctor.user.username }}{% else %}N/A{% endif %}</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Signature / Stamp</div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-thankyou">Wishing you a speedy recovery!</div>
+        <div>Please follow up after completing the medication course if symptoms persist.</div>
+        <div style="margin-top: 4px; color: #94a3b8;">This prescription is valid only for the patient mentioned above.</div>
+    </div>
+
+</body>
+</html>
