@@ -20,5 +20,5 @@ To run this project locally on your machine, make sure you have **Docker** and *
 
 ### 1. Clone the Repository
 ```bash
-git clone [https://github.com/YOUR_GITHUB_USERNAME/Doctor_management_system.git](https://github.com/YOUR_GITHUB_USERNAME/Doctor_management_system.git)
+git clone [https://github.com/dhruvvala01/Doctor_management_system.git](https://github.com/dhruvvala01/Doctor_management_system.git)
 cd Doctor_management_system
